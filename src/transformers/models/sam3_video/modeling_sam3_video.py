@@ -979,7 +979,8 @@ class Sam3VideoModel(Sam3VideoPreTrainedModel):
             else:
                 # Correction mode: detector corrects drift, replace tracker mask with detection mask
                 new_mask = det_out["mask"][det_idx : det_idx + 1].unsqueeze(1)
-                reconditioned_masks[obj_idx] = new_mask >= 0.5
+                # the memory encoder expects logits, so use -10/+10 for neg/pos pixels (as in `_use_mask_as_output`)
+                reconditioned_masks[obj_idx] = torch.where(new_mask > 0, 10.0, -10.0)
                 reconditioned_obj_ids.add(trk_obj_id)
 
         return reconditioned_masks, reconditioned_obj_ids

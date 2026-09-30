@@ -20,23 +20,74 @@ from transformers.testing_utils import (
     backend_empty_cache,
     is_torch_bf16_available_on_device,
     is_torch_fp16_available_on_device,
+    require_torch,
     slow,
     torch_device,
 )
 from transformers.utils import is_torch_available
 from transformers.video_utils import load_video
 
+from ..sam3.test_modeling_sam3 import Sam3ModelTester
+
 
 if is_torch_available():
     import torch
 
-    from transformers import Sam3VideoModel, Sam3VideoProcessor
+    from transformers import (
+        Sam3TrackerVideoConfig,
+        Sam3VideoConfig,
+        Sam3VideoInferenceSession,
+        Sam3VideoModel,
+        Sam3VideoProcessor,
+    )
 
 
 def prepare_video():
     video_url = "https://huggingface.co/datasets/hf-internal-testing/sam2-fixtures/resolve/main/bedroom.mp4"
     raw_video, _ = load_video(video_url)
     return raw_video
+
+
+@require_torch
+class Sam3VideoModelTest(unittest.TestCase):
+    def get_tiny_model(self, **kwargs):
+        detector_config = Sam3ModelTester(self).get_config()
+        tracker_config = Sam3TrackerVideoConfig(
+            prompt_encoder_config={"hidden_size": 32, "image_size": 224, "patch_size": 14},
+            mask_decoder_config={
+                "hidden_size": 32,
+                "mlp_dim": 64,
+                "num_attention_heads": 4,
+                "iou_head_hidden_dim": 32,
+            },
+            memory_attention_hidden_size=32,
+            memory_attention_num_layers=1,
+            memory_attention_feed_forward_hidden_size=64,
+            memory_encoder_hidden_size=32,
+            memory_encoder_output_channels=16,
+            mask_downsampler_embed_dim=32,
+            memory_fuser_embed_dim=32,
+            memory_fuser_intermediate_dim=64,
+        )
+        config = Sam3VideoConfig(detector_config=detector_config, tracker_config=tracker_config, **kwargs)
+        return Sam3VideoModel(config).to(torch_device).eval()
+
+    def test_recondition_masks_are_logits(self):
+        # In correction mode the detection mask replaces the tracker mask and goes through the memory encoder,
+        # which applies a sigmoid, so it has to be logits and not a 0/1 mask (see #49195)
+        model = self.get_tiny_model(recondition_on_trk_masks=False)
+        det_masks = torch.tensor([[[-8.0, 6.0], [6.0, -8.0]]], device=torch_device)
+        reconditioned_masks, reconditioned_obj_ids = model._prepare_recondition_masks(
+            inference_session=Sam3VideoInferenceSession(inference_device=torch_device),
+            frame_idx=0,
+            det_out={"mask": det_masks},
+            trk_masks=det_masks,
+            trk_id_to_max_iou_high_conf_det={0: 0},
+            tracker_obj_scores_global=torch.tensor([0.95], device=torch_device),
+        )
+        self.assertEqual(reconditioned_obj_ids, {0})
+        expected = torch.tensor([[[[-10.0, 10.0], [10.0, -10.0]]]], device=torch_device)
+        torch.testing.assert_close(reconditioned_masks[0], expected)
 
 
 @slow
