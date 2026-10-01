@@ -50,6 +50,7 @@ This HF implementation is contributed by [Sukriti Sharma](https://huggingface.co
 
 ## Notes
 
+- Use left padding for batched generation. See [Padding side](../llm_tutorial#padding-side).
 - `GraniteMoeHybridForCausalLM` supports padding-free training which concatenates distinct training examples while still processing inputs as separate batches. It can significantly accelerate inference by [~2x](https://github.com/huggingface/transformers/pull/35861#issue-2807873129) (depending on model and data distribution) and reduce memory-usage if there are examples of varying lengths by avoiding unnecessary compute and memory overhead from padding tokens.
 
   Padding-free training requires the `flash-attn`, `mamba-ssm`, and `causal-conv1d` packages and the following arguments must be passed to the model in addition to `input_ids` and `labels`.

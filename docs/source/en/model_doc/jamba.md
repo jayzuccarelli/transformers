@@ -116,6 +116,7 @@ print(assistant_response)
 
 ## Notes
 
+- Use left padding for batched generation. See [Padding side](../llm_tutorial#padding-side).
 - Don't quantize the Mamba blocks to prevent model performance degradation.
 - The optimized Mamba kernels are used automatically when available (Hub kernels when loading with `use_kernels=True`, otherwise the `mamba-ssm` and `causal-conv1d` packages if installed). Otherwise, the model falls back to the PyTorch implementation, which results in significantly higher latencies.
 

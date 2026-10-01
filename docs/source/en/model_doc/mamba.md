@@ -83,6 +83,7 @@ print(tokenizer.decode(output[0], skip_special_tokens=True))
 
 ## Notes
 
+- Use left padding for batched generation. See [Padding side](../llm_tutorial#padding-side).
 - The current implementation uses the original CUDA kernels. The FlashAttention equivalent implementation is hosted in the [mamba-ssm](https://github.com/state-spaces/mamba) and [causal_conv1d](https://github.com/Dao-AILab/causal-conv1d) repositories. Make sure to install them if your hardware supports it!
 - Mamba stacks `mixer` layers which are equivalent to `Attention` layers. You can find the main logic of Mamba in the `MambaMixer` class.
 - The example below demonstrates how to fine-tune Mamba with [PEFT](https://huggingface.co/docs/peft).

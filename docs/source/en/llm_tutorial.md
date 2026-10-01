@@ -221,7 +221,7 @@ tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
 ### Padding side
 
-Inputs need to be padded if they don't have the same length. But LLMs aren't trained to continue generation from padding tokens, which means the [`~PreTrainedTokenizer.padding_side`] parameter needs to be set to the left of the input.
+Inputs need to be padded if they don't have the same length. But LLMs aren't trained to continue generation from padding tokens, which means the [`~PreTrainedTokenizer.padding_side`] parameter needs to be set to the left of the input. This applies to every decoder-only model, including state space and hybrid models like Mamba.
 
 <hfoptions id="padding">
 <hfoption id="right pad">
