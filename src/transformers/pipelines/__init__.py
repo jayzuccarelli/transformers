@@ -843,7 +843,9 @@ def pipeline(
     if model_kwargs is None:
         model_kwargs = {}
 
-    code_revision = kwargs.pop("code_revision", None)
+    if "code_revision" in kwargs:
+        # Forward it through `model_kwargs` so the config, model and preprocessors all use the same code revision
+        model_kwargs.setdefault("code_revision", kwargs.pop("code_revision"))
     kwargs.pop("_commit_hash", None)  # BC: not used anymore, `revision` is resolved to a commit hash instead
     local_files_only = kwargs.get("local_files_only", False)
 
@@ -897,9 +899,7 @@ def pipeline(
     # Instantiate config if needed
     adapter_path = None
     if isinstance(config, str):
-        config = AutoConfig.from_pretrained(
-            config, _from_pipeline=task, code_revision=code_revision, **hub_kwargs, **model_kwargs
-        )
+        config = AutoConfig.from_pretrained(config, _from_pipeline=task, **hub_kwargs, **model_kwargs)
     elif config is None and isinstance(model, str):
         # Check for an adapter file in the model path if PEFT is available
         if is_peft_available():
@@ -930,9 +930,7 @@ def pipeline(
                             cache_dir=model_kwargs.get("cache_dir"),
                         )
 
-        config = AutoConfig.from_pretrained(
-            model, _from_pipeline=task, code_revision=code_revision, **hub_kwargs, **model_kwargs
-        )
+        config = AutoConfig.from_pretrained(model, _from_pipeline=task, **hub_kwargs, **model_kwargs)
 
     custom_tasks = {}
     if config is not None and len(getattr(config, "custom_pipelines", {})) > 0:
@@ -968,7 +966,7 @@ def pipeline(
             pipeline_class = get_class_from_dynamic_module(
                 class_ref,
                 model,
-                code_revision=code_revision,
+                code_revision=model_kwargs.get("code_revision"),
                 **hub_kwargs,
             )
     else:

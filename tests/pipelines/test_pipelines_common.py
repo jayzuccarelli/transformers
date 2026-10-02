@@ -144,6 +144,16 @@ class CommonPipelineTest(unittest.TestCase):
         self.assertIsInstance(text_classifier, MyPipeline)
 
     @require_torch
+    def test_pipeline_code_revision(self):
+        # `code_revision` must reach the model load whether it is passed directly or through `model_kwargs`
+        import transformers.pipelines as pipelines_module
+
+        for kwargs in ({"code_revision": "main"}, {"model_kwargs": {"code_revision": "main"}}):
+            with mock.patch.object(pipelines_module, "load_model", wraps=pipelines_module.load_model) as spy:
+                pipeline("text-classification", model="hf-internal-testing/tiny-random-distilbert", **kwargs)
+            self.assertEqual(spy.call_args.kwargs["code_revision"], "main")
+
+    @require_torch
     def test_pipeline_tokenizer_tuple_respects_use_fast_override(self):
         text_classifier = pipeline(
             task="text-classification",
