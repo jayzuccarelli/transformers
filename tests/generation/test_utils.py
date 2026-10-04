@@ -3683,6 +3683,22 @@ class GenerationIntegrationTests(unittest.TestCase):
         self.assertListEqual(detection_out_watermarked.prediction.tolist(), [True])
         self.assertListEqual(detection_out.prediction.tolist(), [False])
 
+    def test_watermark_detector_mixed_bos_batch(self):
+        # rows with and without a leading `bos` should score the same in a batch as alone, see #49293
+        config = LlamaConfig(vocab_size=64, bos_token_id=0)
+        detector = WatermarkDetector(model_config=config, device="cpu", watermarking_config=WatermarkingConfig())
+        no_bos = [5, 17, 33, 2, 48, 9, 61, 20, 14, 7]
+        with_bos = [0, 40, 3, 26, 11, 59, 30, 8, 45, 12]
+
+        out_no_bos = detector(torch.tensor([no_bos]), return_dict=True)
+        out_with_bos = detector(torch.tensor([with_bos]), return_dict=True)
+        for batch in ([no_bos, with_bos], [with_bos, no_bos]):
+            out = detector(torch.tensor(batch), return_dict=True)
+            for idx, row in enumerate(batch):
+                expected = out_with_bos if row is with_bos else out_no_bos
+                self.assertEqual(out.num_tokens_scored[idx], expected.num_tokens_scored[0])
+                self.assertEqual(out.num_green_tokens[idx], expected.num_green_tokens[0])
+
     """Check the mean bias inserted by the watermarking algorithm."""
 
     @slow
